@@ -91,7 +91,7 @@ export class EthService {
       Можно перенести на promise.all, но упираемся в etherscan request rate
     */
 
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 100; i++) {
       let lastNum = lastBock16 - i;
       let hash = lastNum.toString(16);
       let block = await this.getBlock(hash);
