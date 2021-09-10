@@ -8,19 +8,20 @@ export class EthService {
 
   constructor(private httpService: HttpService) {}
 
+  async onModuleInit() {
+    await this.getTopChangesBalance();
+  }
+
   async getTopChangesBalance() {
     const lastBlocks = await this.getLastBlocks();
     const transactions = this.getLastTransactions(lastBlocks);
-    const transactionsWithInfo = await this.getTransactionsWithInfo(
-      transactions
-    );
 
-    let changesMap: Map<string, number> = new Map();
+    const changesMap: Map<string, number> = new Map();
 
-    for (let transaction of transactionsWithInfo) {
-      let transactionValue = Number(transaction.value);
+    for (let transaction of transactions) {
+      const transactionValue = parseInt(transaction.value, 16)
 
-      let addressToValue = changesMap.get(transaction.from);
+      const addressToValue = changesMap.get(transaction.to);
 
       if (addressToValue == undefined) {
         changesMap.set(transaction.to, transactionValue);
@@ -28,23 +29,23 @@ export class EthService {
         changesMap.set(transaction.to, addressToValue + transactionValue);
       }
 
-      let addresFromValue = changesMap.get(transaction.to);
+      const addresFromValue = changesMap.get(transaction.from);
 
       if (addresFromValue == undefined) {
-        changesMap.set(transaction.from, transactionValue);
+        changesMap.set(transaction.from, -transactionValue);
       } else {
-        changesMap.set(transaction.from, addresFromValue + transactionValue);
+        changesMap.set(transaction.from, addresFromValue - transactionValue);
       }
     }
 
-    let topBalanceAddress = {
+    const topBalanceAddress = {
       address: "",
       value: 0,
     };
 
     changesMap.forEach((value, address) => {
-      if (value > topBalanceAddress.value) {
-        topBalanceAddress.value = value;
+      if (Math.abs(value) > topBalanceAddress.value) {
+        topBalanceAddress.value = Math.abs(value);
         topBalanceAddress.address = address;
       }
     });
@@ -56,7 +57,7 @@ export class EthService {
   }
 
   getLastTransactions(blocks: any[]) {
-    let transactions = [];
+    const transactions = [];
 
     blocks.forEach((block) => {
       block.transactions.forEach((transaction) =>
@@ -67,34 +68,36 @@ export class EthService {
     return transactions;
   }
 
+  /*
+    Deprecated
+  */
   async getTransactionsWithInfo(transactions: any[]) {
-    let getTransactionRequests = [];
-    let transactionsWithInfo = [];
+    const getTransactionRequests = [];
 
     for (let transaction of transactions) {
-      let request = web3.eth.getTransaction(transaction.hash);
+      const request = web3.eth.getTransaction(transaction.hash);
       getTransactionRequests.push(request);
     }
 
-    transactionsWithInfo = await Promise.all(getTransactionRequests);
+    const transactionsWithInfo = await Promise.all(getTransactionRequests);
 
     return transactionsWithInfo;
   }
 
   async getLastBlocks() {
-    let lastBlockNumber = await this.getLastBlockNumber();
-    let lastBock16 = parseInt(lastBlockNumber, 16);
+    const lastBlockNumber = await this.getLastBlockNumber();
+    const lastBock16 = parseInt(lastBlockNumber, 16);
 
-    let blocks = [];
+    const blocks = [];
 
     /*
       Можно перенести на promise.all, но упираемся в etherscan request rate
     */
 
     for (let i = 1; i <= 100; i++) {
-      let lastNum = lastBock16 - i;
-      let hash = lastNum.toString(16);
-      let block = await this.getBlock(hash);
+      const lastNum = lastBock16 - i;
+      const hash = lastNum.toString(16);
+      const block = await this.getBlock(hash);
       blocks.push(block);
     }
 
